@@ -1,5 +1,18 @@
 # sminos-operator
 // TODO(user): Add simple overview of use/purpose
+```bash
+make manifests
+make generate
+export IMAGE="docker.io/gntouts/sminos-operator:0.0.1"
+CONTAINER_TOOL=podman make docker-build docker-push IMG=$IMAGE
+make deploy IMG=$IMAGE
+kubectl apply -f config/samples/cache_v1alpha1_sminos.yaml
+make install
+
+make undeploy
+kubectl delete -k config/samples/
+make uninstall
+```
 
 ## Description
 // TODO(user): An in-depth paragraph about your project and overview of use

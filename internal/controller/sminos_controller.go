@@ -19,18 +19,29 @@ package controller
 import (
 	"context"
 
+	cachev1alpha1 "github.com/gntouts/sminos-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	cachev1alpha1 "github.com/gntouts/sminos-operator/api/v1alpha1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+
+	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // SminosReconciler reconciles a Sminos object
 type SminosReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	Config   *rest.Config // Add this field
+	Recorder record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=cache.nubificus.co.uk,resources=sminos,verbs=get;list;watch;create;update;patch;delete
@@ -47,16 +58,72 @@ type SminosReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.4/pkg/reconcile
 func (r *SminosReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	Log := log.FromContext(ctx)
+	// Create a client for the apiextensions API group
+	clientset, err := apiextensionsclient.NewForConfig(r.Config)
+	if err != nil {
+		Log.Error(err, "Failed to create apiextensions client")
+		return ctrl.Result{}, err
+	}
 
-	// TODO(user): your logic here
+	// List the CRDs in the cluster
+	crds, err := clientset.ApiextensionsV1().CustomResourceDefinitions().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		Log.Error(err, "Failed to list CRDs")
+		return ctrl.Result{}, err
+	}
+
+	// Log the names of the CRDs
+	Log.Info("Existing CRDs in the cluster:")
+	for _, crd := range crds.Items {
+		Log.Info("CRD", "Name", crd.Name)
+	}
+
+	// TODO(user): Add your reconciliation logic here
 
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *SminosReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.Config = mgr.GetConfig() // Assign the cluster configuration
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.Sminos{}).
+		Owns(&appsv1.Deployment{}).
+		Watches(&appsv1.Deployment{}, &MyEventHandler{}).
 		Complete(r)
+}
+
+type MyEventHandler struct{}
+
+// Create handles create events.
+func (d *MyEventHandler) Create(ctx context.Context, e event.TypedCreateEvent[client.Object], q workqueue.RateLimitingInterface) {
+	Log := log.FromContext(ctx)
+	Log.Info("Create event received for object: %v\n", e.Object.GetName())
+	// Add the object to the workqueue for reconciliation
+	q.Add(reconcile.Request{NamespacedName: client.ObjectKeyFromObject(e.Object)})
+}
+
+// Update handles update events.
+func (d *MyEventHandler) Update(ctx context.Context, e event.TypedUpdateEvent[client.Object], q workqueue.RateLimitingInterface) {
+	Log := log.FromContext(ctx)
+	Log.Info("Update event received for object: %v\n", e.ObjectNew.GetName())
+	// Add the object to the workqueue for reconciliation
+	q.Add(reconcile.Request{NamespacedName: client.ObjectKeyFromObject(e.ObjectNew)})
+}
+
+// Delete handles delete events.
+func (d *MyEventHandler) Delete(ctx context.Context, e event.TypedDeleteEvent[client.Object], q workqueue.RateLimitingInterface) {
+	Log := log.FromContext(ctx)
+	Log.Info("Delete event received for object: %v\n", e.Object.GetName())
+	// Add the object to the workqueue for reconciliation
+	q.Add(reconcile.Request{NamespacedName: client.ObjectKeyFromObject(e.Object)})
+}
+
+// Generic handles generic events.
+func (d *MyEventHandler) Generic(ctx context.Context, e event.TypedGenericEvent[client.Object], q workqueue.RateLimitingInterface) {
+	Log := log.FromContext(ctx)
+	Log.Info("Generic event received for object: %v\n", e.Object.GetName())
+	// Add the object to the workqueue for reconciliation
+	q.Add(reconcile.Request{NamespacedName: client.ObjectKeyFromObject(e.Object)})
 }

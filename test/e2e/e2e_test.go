@@ -27,7 +27,7 @@ import (
 	"github.com/gntouts/sminos-operator/test/utils"
 )
 
-const namespace = "sminos-operator-system"
+const namespace = "default"
 
 var _ = Describe("controller", Ordered, func() {
 	BeforeAll(func() {

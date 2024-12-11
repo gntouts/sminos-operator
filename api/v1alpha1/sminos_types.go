@@ -61,4 +61,6 @@ type SminosList struct {
 
 func init() {
 	SchemeBuilder.Register(&Sminos{}, &SminosList{})
+	SchemeBuilder.Register(&Instance{}, &InstanceList{})
+
 }
