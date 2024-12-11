@@ -1,0 +1,9 @@
+apiVersion: cache.nubificus.co.uk/v1alpha1
+kind: Sminos
+metadata:
+  labels:
+    app.kubernetes.io/name: sminos-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: sminos-sample
+spec:
+  # TODO(user): Add fields here

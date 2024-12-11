@@ -1,0 +1,27 @@
+# permissions for end users to edit sminos.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: sminos-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: sminos-editor-role
+rules:
+- apiGroups:
+  - cache.nubificus.co.uk
+  resources:
+  - sminos
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cache.nubificus.co.uk
+  resources:
+  - sminos/status
+  verbs:
+  - get
